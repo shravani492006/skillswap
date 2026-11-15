@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { API_URL } from "../lib/api";
 import SessionDetailsModal from "./SessionDetailsModal";
+import LiveSessionModal from "./LiveSessionModal";
 
 const navItems = [
     { id: "dashboard", label: "Dashboard", icon: "🏠" },
@@ -171,6 +173,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
     const [bookingFeedback, setBookingFeedback] = useState(null);
     const [mentorReviews, setMentorReviews] = useState([]);
     const [selectedSessionForModal, setSelectedSessionForModal] = useState(null);
+    const [selectedLiveSession, setSelectedLiveSession] = useState(null);
     const [currentMentorUser, setCurrentMentorUser] = useState(null);
 
     const loadMentorData = async () => {
@@ -182,7 +185,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
             const token = session?.access_token;
             if (!token) return;
 
-            const response = await fetch("http://localhost:5000/mentors/me", {
+            const response = await fetch(`${API_URL}/mentors/me`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -219,7 +222,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
             // Also load reviews for this mentor
             if (session?.user?.id) {
                 try {
-                    const revRes = await fetch(`http://localhost:5000/mentors/${session.user.id}`);
+                    const revRes = await fetch(`${API_URL}/mentors/${session.user.id}`);
                     if (revRes.ok) {
                         const revData = await revRes.json();
                         if (Array.isArray(revData.mentor?.reviews)) {
@@ -244,7 +247,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
             const token = session?.access_token;
             if (!token) return;
 
-            const response = await fetch("http://localhost:5000/bookings", {
+            const response = await fetch(`${API_URL}/bookings`, {
                 headers: {
                     Authorization: `Bearer ${token}`
                 }
@@ -285,7 +288,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
                 return;
             }
 
-            const response = await fetch("http://localhost:5000/mentors/me/skills", {
+            const response = await fetch(`${API_URL}/mentors/me/skills`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -478,7 +481,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
                 slots: avail[d].active ? (avail[d].slots || []) : []
             }));
 
-            const response = await fetch("http://localhost:5000/mentors/me/availability", {
+            const response = await fetch(`${API_URL}/mentors/me/availability`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -530,7 +533,7 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
                 return;
             }
 
-            const response = await fetch(`http://localhost:5000/bookings/${bookingId}`, {
+            const response = await fetch(`${API_URL}/bookings/${bookingId}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -875,6 +878,13 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
                                                     📌 {s.topic}
                                                 </div>
                                                 <div className="mt-3 flex gap-2">
+                                                    <button
+                                                        onClick={() => setSelectedLiveSession(s)}
+                                                        className="text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                                                    >
+                                                        <span>🎥</span>
+                                                        <span>Join Live Session</span>
+                                                    </button>
                                                     <button
                                                         onClick={() => setSelectedSessionForModal(s)}
                                                         className="text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 px-3.5 py-1.5 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
@@ -1318,5 +1328,12 @@ export default function MentorDashboard({ onNavigate, initialTab }) {
                     onBookingUpdated={loadBookings}
                 />
             )}
+        {selectedLiveSession && (
+            <LiveSessionModal
+                booking={selectedLiveSession}
+                onClose={() => setSelectedLiveSession(null)}
+                onBookingUpdated={loadBookings}
+            />
+        )}
         </div>);
 }

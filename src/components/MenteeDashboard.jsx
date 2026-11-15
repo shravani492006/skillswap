@@ -1,7 +1,9 @@
 // import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { API_URL } from "../lib/api";
 import { useEffect, useState } from "react";
 import AIChat from "./AIChat";
+import LiveSessionModal from "./LiveSessionModal";
 const navItems = [
     { id: "dashboard", label: "Dashboard", icon: "🏠" },
     { id: "search", label: "Find Mentors", icon: "🔍" },
@@ -96,6 +98,7 @@ export default function MenteeDashboard({ onNavigate }) {
     const [profile, setProfile] = useState(null);
     const [mentorsList, setMentorsList] = useState([]);
     const [realUpcoming, setRealUpcoming] = useState([]);
+    const [selectedLiveSession, setSelectedLiveSession] = useState(null);
     const [headerSearch, setHeaderSearch] = useState("");
 
     useEffect(() => {
@@ -119,7 +122,7 @@ export default function MenteeDashboard({ onNavigate }) {
             }
 
             try {
-                const response = await fetch("http://localhost:5000/profile", {
+                const response = await fetch(`${API_URL}/profile`, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -138,7 +141,7 @@ export default function MenteeDashboard({ onNavigate }) {
 
             // Fetch live mentors for recommended section
             try {
-                fetch("http://localhost:5000/mentors")
+                fetch(`${API_URL}/mentors`)
                     .then((r) => r.json())
                     .then((d) => {
                         if (d.mentors && d.mentors.length > 0) {
@@ -165,7 +168,7 @@ export default function MenteeDashboard({ onNavigate }) {
 
             // Fetch live upcoming confirmed bookings
             try {
-                const bRes = await fetch("http://localhost:5000/bookings", {
+                const bRes = await fetch(`${API_URL}/bookings`, {
                     headers: {
                         Authorization: `Bearer ${token}`
                     }
@@ -407,9 +410,19 @@ export default function MenteeDashboard({ onNavigate }) {
                       <div className="bg-[#eef0ff] rounded-xl px-3 py-2 text-xs text-[#4f46e5] font-semibold mb-3 border border-[#c7d2fe]/30">
                         📌 {s.topic}
                       </div>
-                      <button className="w-full bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold py-2.5 rounded-xl text-xs transition-colors shadow-xs cursor-pointer" onClick={() => onNavigate("bookings")}>
-                        View Details
-                      </button>
+                      <div className="space-y-2">
+                        {s.id && s.status === "confirmed" && (
+                          <button
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors shadow-xs cursor-pointer"
+                            onClick={() => setSelectedLiveSession(s)}
+                          >
+                            Join Live Session
+                          </button>
+                        )}
+                        <button className="w-full bg-[#4f46e5] hover:bg-[#4338ca] text-white font-semibold py-2.5 rounded-xl text-xs transition-colors shadow-xs cursor-pointer" onClick={() => onNavigate("bookings")}>
+                          View Details
+                        </button>
+                      </div>
                     </div>))}
                 </div>
               </div>
@@ -439,5 +452,18 @@ export default function MenteeDashboard({ onNavigate }) {
       {!showAIChat && (<button className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-full shadow-xl hover:shadow-2xl flex items-center justify-center text-white text-2xl hover:-translate-y-1 transition-all z-50" onClick={() => setShowAIChat(true)}>
           ✨
         </button>)}
+      {selectedLiveSession && (
+        <LiveSessionModal
+          booking={selectedLiveSession}
+          onClose={() => setSelectedLiveSession(null)}
+          onBookingUpdated={(updatedSession) => {
+            if (["completed", "cancelled"].includes(updatedSession?.status)) {
+              setRealUpcoming((current) =>
+                current.filter((session) => session.id !== updatedSession.bookingId)
+              );
+            }
+          }}
+        />
+      )}
     </div>);
 }

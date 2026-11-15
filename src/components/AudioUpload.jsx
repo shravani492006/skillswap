@@ -1,9 +1,19 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import { API_URL } from "../lib/api";
 
 const SUPPORTED_EXTENSIONS = [".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg"];
 const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
 const MAX_DURATION_SECONDS = 30.0;
+
+const LANGUAGE_OPTIONS = [
+    { code: "indic-auto", label: "Auto-detect (Indic & English)", hint: "Recommended" },
+    { code: "en-IN", label: "English (India)", hint: "Direct Model" },
+    { code: "hi-IN", label: "Hindi", hint: "Direct Model" },
+    { code: "mr-IN", label: "Marathi", hint: "Direct Model" },
+    { code: "en-IN,hi-IN", label: "English + Hindi", hint: "Code-mixed" },
+    { code: "en-IN,mr-IN", label: "English + Marathi", hint: "Code-mixed" }
+];
 
 export default function AudioUpload({ booking, currentUser, onUploadSuccess }) {
     const [selectedFile, setSelectedFile] = useState(null);
@@ -21,6 +31,7 @@ export default function AudioUpload({ booking, currentUser, onUploadSuccess }) {
     // Upload & processing states
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(null);
+    const [selectedLanguage, setSelectedLanguage] = useState("indic-auto");
     const [errorMessage, setErrorMessage] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
 
@@ -40,7 +51,7 @@ export default function AudioUpload({ booking, currentUser, onUploadSuccess }) {
             const token = session?.access_token;
             if (!token) return;
 
-            const res = await fetch(`http://localhost:5000/bookings/${booking.id}/transcript`, {
+            const res = await fetch(`${API_URL}/bookings/${booking.id}/transcript`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -124,7 +135,7 @@ export default function AudioUpload({ booking, currentUser, onUploadSuccess }) {
                 return;
             }
 
-            const res = await fetch(`http://localhost:5000/bookings/${booking.id}/consent`, {
+            const res = await fetch(`${API_URL}/bookings/${booking.id}/consent`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,
@@ -185,14 +196,14 @@ export default function AudioUpload({ booking, currentUser, onUploadSuccess }) {
             const formData = new FormData();
             formData.append("audio", selectedFile);
             formData.append("consent", "true");
-            formData.append("language_code", "indic-auto");
+            formData.append("language_code", selectedLanguage || "indic-auto");
             if (detectedDuration) {
                 formData.append("duration", detectedDuration.toString());
             }
 
             setUploadProgress("Transcribing audio with Gnani.ai Prisma v3.0...");
 
-            const response = await fetch(`http://localhost:5000/bookings/${booking.id}/audio`, {
+            const response = await fetch(`${API_URL}/bookings/${booking.id}/audio`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -373,6 +384,34 @@ export default function AudioUpload({ booking, currentUser, onUploadSuccess }) {
                         )}
                     </div>
                 )}
+            </div>
+
+            {/* Language Selection Section (Prisma v3.0) */}
+            <div className="bg-[#F8FAFC] rounded-xl p-4 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                    <label htmlFor="language-select" className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <span>🌐</span>
+                        <span>Spoken Language / Mode</span>
+                    </label>
+                    <span className="text-[10px] text-indigo-600 bg-indigo-50 font-bold px-2 py-0.5 rounded">
+                        Prisma v3.0
+                    </span>
+                </div>
+                <select
+                    id="language-select"
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    className="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors cursor-pointer"
+                >
+                    {LANGUAGE_OPTIONS.map((opt) => (
+                        <option key={opt.code} value={opt.code}>
+                            {opt.label} ({opt.hint})
+                        </option>
+                    ))}
+                </select>
+                <p className="text-[11px] text-slate-500">
+                    Auto-detect works across all supported Indic languages and English. Choose Code-mixed for bilingual mentorship sessions.
+                </p>
             </div>
 
             {/* Error & Feedback Messages */}
